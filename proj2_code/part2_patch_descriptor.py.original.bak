@@ -24,29 +24,16 @@ def compute_normalized_patch_descriptors(
     Returns:
         fvs: array of shape (K,D) representing feature descriptors
     """
-    K = len(X)
-    D = feature_width * feature_width
-    fvs = np.zeros((K, D))
 
-    half_width = feature_width // 2
+    ###########################################################################
+    # TODO: YOUR CODE HERE                                                    #
+    ###########################################################################
 
-    for i in range(K):
-        x = int(X[i])
-        y = int(Y[i])
-        
-        # Ensure the patch is within the image boundaries
-        if x - half_width < 0 or x + half_width >= image_bw.shape[1] or \
-           y - half_width < 0 or y + half_width >= image_bw.shape[0]:
-            continue
-        
-        patch = image_bw[y - half_width:y + half_width, x - half_width:x + half_width]
-        patch = patch.flatten()
-        
-        # Normalize the patch to have unit norm
-        norm = np.linalg.norm(patch)
-        if norm != 0:
-            patch = patch / norm
-        
-        fvs[i, :] = patch
+    raise NotImplementedError('`compute_normalized_patch_descriptors` ' +
+        'function in`part2_patch_descriptor.py` needs to be implemented')
+
+    ###########################################################################
+    #                             END OF YOUR CODE                            #
+    ###########################################################################
 
     return fvs

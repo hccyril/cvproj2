@@ -69,6 +69,11 @@ def test_compute_image_gradients():
             [0., 0., 0., -1., -2., -1., 0.],
             [-1., -2., -1., -1., -2., -1., 0.]
         ]).astype(np.float32)
+    
+    # print("Ix:", Ix)
+    # print("Expected Ix:", expected_Ix)
+    # print("Iy:", Iy)
+    # print("Expected Iy:", expected_Iy)
 
     assert np.allclose(Ix, expected_Ix)
     assert np.allclose(Iy, expected_Iy)
@@ -163,9 +168,23 @@ def test_second_moments():
     gt_sxsy_crop = np.array([[0.13332403, 0.20079066, 0.266298  ],
                              [0.3010661 , 0.28707492, 0.27026486],
                              [0.33388686, 0.33304197, 0.32891643]]).astype(np.float32)
+    
+    print('sx2')
+    print(sx2[1:4,1:4])
+    print(gt_sx2_crop)
 
     assert np.allclose(sx2[1:4,1:4], gt_sx2_crop, atol=1e-3)
+
+    print('sy2')
+    print(sy2[2:5,2:5])
+    print(gt_sy2_crop)
+
     assert np.allclose(sy2[2:5,2:5], gt_sy2_crop, atol=1e-3)
+
+    print('sxsy')
+    print(sxsy[1:4,2:5])
+    print(gt_sxsy_crop)
+
     assert np.allclose(sxsy[1:4,2:5], gt_sxsy_crop, atol=1e-3)
 
 
@@ -226,6 +245,10 @@ def test_maxpool_numpy():
             [2., 2., 7., 7., 7.],
             [1., 1., 7., 7., 7.]
         ])
+    
+    print("R_maxpooled")
+    print(R_maxpooled)
+    print(expected_R_maxpooled)
 
     assert np.allclose(R_maxpooled, expected_R_maxpooled)
 
