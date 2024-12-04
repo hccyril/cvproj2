@@ -15,7 +15,7 @@
 
 ## Installation
 
-- There is no module named 'proj2_code' Getting "ModuleNotFoundError: No module named 'proj2_code' when running the setup in proj2 notebook." How can I fix this? Did you already install the modules with ¡®pip install -e .¡¯ inside the project root directory?
+- There is no module named 'proj2_code' Getting "ModuleNotFoundError: No module named 'proj2_code' when running the setup in proj2 notebook." How can I fix this? Did you already install the modules with ï¿½ï¿½pip install -e .ï¿½ï¿½ inside the project root directory?
 
 
 ## Harris
@@ -103,14 +103,14 @@ print(f'My code took {duration} seconds to run')
 - You can read more about how to go from one feature map size to another feature map size here under "Summary". (http://cs231n.github.io/convolutional-networks/) Specifically, a conv layer:
 
 http://cs231n.github.io/convolutional-networks/
-Accepts a volume of size W1¡ÁH1¡ÁD1
+Accepts a volume of size W1 x H1 x D1
 Requires four hyperparameters:
 Number of filters K,
 their spatial extent F,
 the stride S,
 the amount of zero padding P.
-Produces a volume of size W2¡ÁH2¡ÁD2 where:
-W2=(W1?F+2P)/S+1
-H2=(H1?F+2P)/S+1 (i.e. width and height are computed equally by symmetry)
+Produces a volume of size W2 x H2 x D2 where:
+W2=(W1 ? F+2P)/S+1
+H2=(H1 ? F+2P)/S+1 (i.e. width and height are computed equally by symmetry)
 D2=K
 
