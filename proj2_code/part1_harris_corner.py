@@ -2,7 +2,7 @@
 
 import numpy as np
 import torch
-
+import scipy.ndimage
 from torch import nn
 from typing import Tuple
 
@@ -22,57 +22,16 @@ SOBEL_Y_KERNEL = np.array(
 
 
 def compute_image_gradients(image_bw: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Use convolution with Sobel filters to compute the image gradient at each
-    pixel.
-
-    Args:
-        image_bw: A numpy array of shape (M,N) containing the grayscale image
-
-    Returns:
-        Ix: Array of shape (M,N) representing partial derivatives of image
-            w.r.t. x-direction
-        Iy: Array of shape (M,N) representing partial derivative of image
-            w.r.t. y-direction
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`compute_image_gradients` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-
+    Ix = scipy.ndimage.convolve(image_bw, SOBEL_X_KERNEL)
+    Iy = scipy.ndimage.convolve(image_bw, SOBEL_Y_KERNEL)
     return Ix, Iy
 
 
 def get_gaussian_kernel_2D_pytorch(ksize: int, sigma: float) -> torch.Tensor:
-    """Create a Pytorch Tensor representing a 2d Gaussian kernel
-
-    Args:
-        ksize: dimension of square kernel
-        sigma: standard deviation of Gaussian
-
-    Returns:
-        kernel: Tensor of shape (ksize,ksize) representing 2d Gaussian kernel
-
-    You should be able to reuse your project 1 Code here.
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`get_gaussian_kernel_2D_pytorch` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-
+    ax = torch.arange(-ksize // 2 + 1., ksize // 2 + 1.)
+    xx, yy = torch.meshgrid(ax, ax)
+    kernel = torch.exp(-0.5 * (xx**2 + yy**2) / sigma**2)
+    kernel = kernel / torch.sum(kernel)
     return kernel
 
 
@@ -81,36 +40,11 @@ def second_moments(
     ksize: int = 7,
     sigma: float = 10
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """ Compute second moments from image.
-
-    Compute image gradients Ix and Iy at each pixel, the mixed derivatives,
-    then the second moments (sx2, sxsy, sy2) at each pixel, using convolution
-    with a Gaussian filter.
-
-    Args:
-        image_bw: array of shape (M,N) containing the grayscale image
-        ksize: size of 2d Gaussian filter
-        sigma: standard deviation of Gaussian filter
-
-    Returns:
-        sx2: array of shape (M,N) containing the second moment in x direction
-        sy2: array of shape (M,N) containing the second moment in y direction
-        sxsy: array of dim (M,N) containing the second moment in the x then the
-            y direction
-    """
-
-    sx2, sy2, sxsy = None, None, None
-    ###########################################################################
-    # TODO: YOUR SECOND MOMENTS CODE HERE                                     #
-    ###########################################################################
-
-    raise NotImplementedError('`second_moments` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-
+    Ix, Iy = compute_image_gradients(image_bw)
+    kernel = get_gaussian_kernel_2D_pytorch(ksize, sigma).numpy()
+    sx2 = scipy.ndimage.convolve(Ix**2, kernel)
+    sy2 = scipy.ndimage.convolve(Iy**2, kernel)
+    sxsy = scipy.ndimage.convolve(Ix*Iy, kernel)
     return sx2, sy2, sxsy
 
 
@@ -120,72 +54,19 @@ def compute_harris_response_map(
     sigma: float = 5,
     alpha: float = 0.05
 ) -> np.ndarray:
-    """Compute the Harris cornerness score at each pixel (See Szeliski 7.1.1)
-
-    Recall that R = det(M) - alpha * (trace(M))^2
-    where M = [S_xx S_xy;
-               S_xy  S_yy],
-          S_xx = Gk * I_xx
-          S_yy = Gk * I_yy
-          S_xy  = Gk * I_xy,
-    and * is a convolutional operation over a Gaussian kernel of size (k, k).
-    (You can verify that this is equivalent to taking a (Gaussian) weighted sum
-    over the window of size (k, k), see how convolutional operation works here:
-        http://cs231n.github.io/convolutional-networks/)
-
-    Ix, Iy are simply image derivatives in x and y directions, respectively.
-    You may find the Pytorch function nn.Conv2d() helpful here.
-
-    Args:
-        image_bw: array of shape (M,N) containing the grayscale image
-            ksize: size of 2d Gaussian filter
-        sigma: standard deviation of gaussian filter
-        alpha: scalar term in Harris response score
-
-    Returns:
-        R: array of shape (M,N), indicating the corner score of each pixel.
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`compute_harris_response_map` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                           END OF YOUR CODE                              #
-    ###########################################################################
-
+    sx2, sy2, sxsy = second_moments(image_bw, ksize, sigma)
+    det_M = sx2 * sy2 - sxsy**2
+    trace_M = sx2 + sy2
+    R = det_M - alpha * trace_M**2
     return R
 
 
 def maxpool_numpy(R: np.ndarray, ksize: int) -> np.ndarray:
-    """ Implement the 2d maxpool operator with (ksize,ksize) kernel size.
-
-    Note: the implementation is identical to my_conv2d_numpy(), except we
-    replace the dot product with a max() operator.
-
-    Args:
-        R: array of shape (M,N) representing a 2d score/response map
-
-    Returns:
-        maxpooled_R: array of shape (M,N) representing the maxpooled 2d
-            score/response map
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`maxpool_numpy` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                           END OF YOUR CODE                              #
-    ###########################################################################
-
-    return maxpooled_R
+    output = np.zeros_like(R)
+    for i in range(0, R.shape[0] - ksize + 1, ksize):
+        for j in range(0, R.shape[1] - ksize + 1, ksize):
+            output[i:i+ksize, j:j+ksize] = np.max(R[i:i+ksize, j:j+ksize])
+    return output
 
 
 def nms_maxpool_pytorch(
@@ -193,49 +74,16 @@ def nms_maxpool_pytorch(
     k: int,
     ksize: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """ Get top k interest points that are local maxima over (ksize,ksize)
-    neighborhood.
-
-    HINT: One simple way to do non-maximum suppression is to simply pick a
-    local maximum over some window size (u, v). This can be achieved using
-    nn.MaxPool2d. Note that this would give us all local maxima even when they
-    have a really low score compare to other local maxima. It might be useful
-    to threshold out low value score before doing the pooling (torch.median
-    might be useful here).
-
-    You will definitely need to understand how nn.MaxPool2d works in order to
-    utilize it, see https://pytorch.org/docs/stable/nn.html#maxpool2d
-
-    Threshold globally everything below the median to zero, and then
-    MaxPool over a 7x7 kernel. This will fill every entry in the subgrids
-    with the maximum nearby value. Binarize the image according to
-    locations that are equal to their maximum. Multiply this binary
-    image, multiplied with the cornerness response values. We'll be testing
-    only 1 image at a time.
-
-    Args:
-        R: score response map of shape (M,N)
-        k: number of interest points (take top k by confidence)
-        ksize: kernel size of max-pooling operator
-
-    Returns:
-        x: array of shape (k,) containing x-coordinates of interest points
-        y: array of shape (k,) containing y-coordinates of interest points
-        c: array of shape (k,) containing confidences of interest points
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`nms_maxpool_pytorch` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                           END OF YOUR CODE                              #
-    ###########################################################################
-
-    return x, y, confidences
+    R = torch.from_numpy(R)
+    median_val = torch.median(R)
+    R[R < median_val] = 0
+    pool = nn.MaxPool2d(ksize, stride=1, padding=ksize//2)
+    pooled = pool(R.unsqueeze(0).unsqueeze(0)).squeeze()
+    maxima = (pooled == R) * R
+    y, x = torch.nonzero(maxima, as_tuple=True)
+    confidences = maxima[y, x]
+    sorted_confidences, idx = torch.sort(confidences, descending=True)
+    return x[idx[:k]].numpy(), y[idx[:k]].numpy(), sorted_confidences[:k].numpy()
 
 
 def remove_border_vals(
@@ -244,67 +92,15 @@ def remove_border_vals(
     y: np.ndarray,
     c: np.ndarray
 ) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
-    """
-    Remove interest points that are too close to a border to allow SIFT feature
-    extraction. Make sure you remove all points where a 16x16 window around
-    that point cannot be formed.
-
-    Args:
-        img: array of shape (M,N) containing the grayscale image
-        x: array of shape (k,) representing x coord of interest points
-        y: array of shape (k,) representing y coord of interest points
-        c: array of shape (k,) representing confidences of interest points
-
-    Returns:
-        x: array of shape (p,), where p <= k (less than or equal after pruning)
-        y: array of shape (p,)
-        c: array of shape (p,)
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`remove_border_vals` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                           END OF YOUR CODE                              #
-    ###########################################################################
-
-    return x, y, c
+    mask = (x >= 8) & (x < img.shape[1] - 8) & (y >= 8) & (y < img.shape[0] - 8)
+    return x[mask], y[mask], c[mask]
 
 
 def get_harris_interest_points(
     image_bw: np.ndarray,
     k: int = 2500
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Implement the Harris Corner detector. You will find
-    compute_harris_response_map(), nms_maxpool_pytorch(), and
-    remove_border_vals() useful. Make sure to sort the interest points in
-    order of confidence!
-
-    Args:
-        image_bw: array of shape (M,N) containing the grayscale image
-        k: maximum number of interest points to retrieve
-
-    Returns:
-        x: array of shape (p,) containing x-coordinates of interest points
-        y: array of shape (p,) containing y-coordinates of interest points
-        c: array of dim (p,) containing the strength(confidence) of each
-            interest point where p <= k.
-    """
-
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
-
-    raise NotImplementedError('`get_harris_interest_points` function in ' +
-        '`part1_harris_corner.py` needs to be implemented')
-
-    ###########################################################################
-    #                           END OF YOUR CODE                              #
-    ###########################################################################
-
-    return x, y, c
+    R = compute_harris_response_map(image_bw)
+    x, y, confidences = nms_maxpool_pytorch(R, k, 7)
+    x, y, confidences = remove_border_vals(image_bw, x, y, confidences)
+    return x, y, confidences
