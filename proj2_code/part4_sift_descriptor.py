@@ -45,15 +45,16 @@ def get_magnitudes_and_orientations(
             the gradients at each pixel location. angles should range from
             -PI to PI.
     """
-    magnitudes = []  # placeholder
-    orientations = []  # placeholder
+    magnitudes = np.sqrt(Ix**2 + Iy**2)
+    orientations = np.arctan2(Iy, Ix)
+    # return magnitudes, orientations
 
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
 
-    raise NotImplementedError('`get_magnitudes_and_orientations()` function ' +
-        'in `part4_sift_descriptor.py` needs to be implemented')
+    # raise NotImplementedError('`get_magnitudes_and_orientations()` function ' +
+    #     'in `part4_sift_descriptor.py` needs to be implemented')
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -99,14 +100,40 @@ def get_gradient_histogram_vec_from_patch(
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
 
-    raise NotImplementedError('`get_gradient_histogram_vec_from_patch` ' +
-        'function in `part4_sift_descriptor.py` needs to be implemented')
+    # 初始化特征向量
+    feature_width = 16
+    num_cells_per_row = 4
+    num_cells_per_col = 4
+    num_bins = 8
+    bin_centers = np.array([-7 * np.pi / 8, -5 * np.pi / 8, -3 * np.pi / 8, -np.pi / 8,
+                            np.pi / 8, 3 * np.pi / 8, 5 * np.pi / 8, 7 * np.pi / 8])
+    cell_width = feature_width // num_cells_per_row
+    wgh = np.zeros((num_cells_per_row * num_cells_per_col * num_bins, 1))
+    for row in range(num_cells_per_row):
+        for col in range(num_cells_per_col):
+            # 确定当前单元格对应的图像区域范围
+            row_start = row * cell_width
+            row_end = (row + 1) * cell_width
+            col_start = col * cell_width
+            col_end = (col + 1) * cell_width
+            cell_magnitudes = window_magnitudes[row_start:row_end, col_start:col_end].flatten()
+            cell_orientations = window_orientations[row_start:row_end, col_start:col_end].flatten()
+            # 计算当前单元格的梯度直方图
+            hist, _ = np.histogram(cell_orientations, bins=num_bins, range=(-np.pi, np.pi), weights=cell_magnitudes,
+                                   density=False)
+            # 将当前单元格的直方图结果放入特征向量中
+            idx = (row * num_cells_per_col + col) * num_bins
+            wgh[idx:idx + num_bins, 0] = hist
+    return wgh
+
+    # raise NotImplementedError('`get_gradient_histogram_vec_from_patch` ' +
+    #     'function in `part4_sift_descriptor.py` needs to be implemented')
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
 
-    return wgh
+    # return wgh
 
 
 def get_feat_vec(
@@ -155,21 +182,69 @@ def get_feat_vec(
             "feat_dim" is the feature_dimensionality (e.g., 128 for standard
             SIFT). These are the computed features.
     """
+    """
+    实现返回特定兴趣点特征向量的函数，可参考SIFT描述符相关要求进行更完善实现
+    """
+    half_width = feature_width // 2
+    x_min = int(max(0, x - half_width))
+    x_max = int(min(magnitudes.shape[1], x + half_width))
+    y_min = int(max(0, y - half_width))
+    y_max = int(min(magnitudes.shape[0], y + half_width))
 
-    fv = []  # placeholder
+    patch_magnitudes = magnitudes[y_min:y_max, x_min:x_max]
+    patch_orientations = orientations[y_min:y_max, x_min:x_max]
 
-    ###########################################################################
-    # TODO: YOUR CODE HERE                                                    #
-    ###########################################################################
+    num_cells_per_row = 4
+    num_cells_per_col = 4
+    num_bins = 8
+    bin_centers = np.array([-7 * np.pi / 8, -5 * np.pi / 8, -3 * np.pi / 8, -np.pi / 8,
+                            np.pi / 8, 3 * np.pi / 8, 5 * np.pi / 8, 7 * np.pi / 8])
+    cell_width = feature_width // num_cells_per_row
+    fv = np.zeros((num_cells_per_row * num_cells_per_col * num_bins, 1))
 
-    raise NotImplementedError('`get_feat_vec` function in ' +
-        '`student_sift.py` needs to be implemented')
+    # 遍历每个单元格
+    for row in range(num_cells_per_row):
+        for col in range(num_cells_per_col):
+            row_start = row * cell_width
+            row_end = (row + 1) * cell_width
+            col_start = col * cell_width
+            col_end = (col + 1) * cell_width
+            cell_magnitudes = patch_magnitudes[row_start:row_end, col_start:col_end].flatten()
+            cell_orientations = patch_orientations[row_start:row_end, col_start:col_end].flatten()
 
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+            # 初始化当前单元格的直方图
+            hist = np.zeros(num_bins)
+            for mag, ang in zip(cell_magnitudes, cell_orientations):
+                # 确定角度所属的bin
+                bin_idx = np.digitize(ang, bin_centers, right=True)
+                if bin_idx == num_bins:
+                    bin_idx = 0
+                hist[bin_idx] += mag
 
-    return fv
+            idx = (row * num_cells_per_col + col) * num_bins
+            fv[idx:idx + num_bins, 0] = hist
+
+    # 归一化特征向量到单位长度
+    norm = np.linalg.norm(fv)
+    if norm > 0:
+        fv /= norm
+
+    # 应用square-root SIFT，即对特征向量每个元素开平方根
+    fv = np.sqrt(fv)
+    # fv = []  # placeholder
+
+    # ###########################################################################
+    # # TODO: YOUR CODE HERE                                                    #
+    # ###########################################################################
+
+    # raise NotImplementedError('`get_feat_vec` function in ' +
+    #     '`student_sift.py` needs to be implemented')
+
+    # ###########################################################################
+    # #                             END OF YOUR CODE                            #
+    # ###########################################################################
+
+    # return fv
 
 
 def get_SIFT_descriptors(

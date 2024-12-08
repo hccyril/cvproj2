@@ -6,27 +6,40 @@ def compute_normalized_patch_descriptors(
     image_bw: np.ndarray, X: np.ndarray, Y: np.ndarray, feature_width: int
 ) -> np.ndarray:
 
-    K = X.shape[0]
-    D = feature_width ** 2
-    fvs = np.zeros((K, D))
+    K = len(X)
+    D = feature_width * feature_width
+    fvs = []
+
+    # 调整 half_width
+    if feature_width % 2 == 0:
+        half_width = feature_width // 2 - 1
+    else:
+        half_width = feature_width // 2
 
     for i in range(K):
-        x_center = int(X[i])
-        y_center = int(Y[i])
+        x, y = X[i], Y[i]
 
-        start_x = max(0, x_center - feature_width // 2)
-        end_x = min(image_bw.shape[1], x_center + feature_width // 2 + 1)
-        start_y = max(0, y_center - feature_width // 2)
-        end_y = min(image_bw.shape[0], y_center + feature_width // 2 + 1)
+        left = int(x) - half_width
+        top = int(y) - half_width
 
-        patch = image_bw[start_y:end_y, start_x:end_x]
+        # 检查边界条件，确保索引在图像范围内
+        if (left < 0 or top < 0 or
+            left + feature_width > image_bw.shape[1] or
+            top + feature_width > image_bw.shape[0]):
+            continue  # 跳过无法提取完整窗口的关键点
 
-        patch_flat = patch.flatten()
+        # 提取窗口
+        patch = image_bw[top : top + feature_width, left : left + feature_width]
 
-        norm = np.linalg.norm(patch_flat)
+        # 展平并归一化
+        fv = patch.flatten()
+        norm = np.linalg.norm(fv)
+        if norm != 0:
+            fv = fv / norm
 
-        if norm!= 0:
-            fvs[i] = patch_flat / norm
+        fvs.append(fv)
+
+    fvs = np.array(fvs)
 
     return fvs
 
