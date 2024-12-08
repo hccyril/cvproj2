@@ -35,9 +35,16 @@ def compute_feature_distances(
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`compute_feature_distances` function in ' +
-        '`part3_feature_matching.py` needs to be implemented')
+    sum1 = np.sum(features1**2, axis=1).reshape(-1, 1)  # 形状 (n1, 1)
+    # 计算 features2 的平方和并在行方向扩展
+    sum2 = np.sum(features2**2, axis=1).reshape(1, -1)  # 形状 (1, n2)
+    # 计算点积
+    inner_product = np.dot(features1, features2.T)  # 形状 (n1, n2)
+    # 使用欧氏距离公式的变形
+    dists = np.sqrt(sum1 - 2 * inner_product + sum2)  # 形状 (n1, n2)
+    return dists
+    # raise NotImplementedError('`compute_feature_distances` function in ' +
+    #     '`part3_feature_matching.py` needs to be implemented')
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -82,9 +89,37 @@ def match_features_ratio_test(
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
+    distances = compute_feature_distances(features1, features2)  # shape: (n1, n2)
 
-    raise NotImplementedError('`match_features_ratio_test` function in ' +
-        '`part3_feature_matching.py` needs to be implemented')
+    matches = []
+    confidences = []
+
+    for i in range(distances.shape[0]):
+        # 获取第 i 个特征与所有特征的距离
+        dists = distances[i, :]
+
+        # 找到最近邻和次近邻的索引
+        idx_sorted = np.argsort(dists)
+        nearest = idx_sorted[0]
+        second_nearest = idx_sorted[1]
+
+        # 计算距离比率
+        ratio = dists[nearest] / dists[second_nearest]
+
+        # 设定阈值，通常为 0.8
+        if ratio < 0.8:
+            matches.append([i, nearest])
+            confidences.append(1 - ratio)  # 置信度可以设为 1 - ratio
+
+    matches = np.array(matches)
+    confidences = np.array(confidences)
+
+    # 按置信度从高到低排序
+    sorted_indices = np.argsort(-confidences)
+    matches = matches[sorted_indices]
+    confidences = confidences[sorted_indices]
+    # raise NotImplementedError('`match_features_ratio_test` function in ' +
+    #     '`part3_feature_matching.py` needs to be implemented')
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
