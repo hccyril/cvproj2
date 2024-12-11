@@ -7,15 +7,11 @@ import pdb
 import time
 import torch
 
-from proj2_code.part1_harris_corner import compute_image_gradients
+from part1_harris_corner import compute_image_gradients
 from torch import nn
 from typing import Tuple
 
-
 """
-Authors: Vijay Upadhya, John Lambert, Cusuh Ham, Patsorn Sangkloy, Samarth
-Brahmbhatt, Frank Dellaert, James Hays, January 2021.
-
 Implement SIFT  (See Szeliski 7.1.2 or the original publications here:
     https://www.cs.ubc.ca/~lowe/papers/ijcv04.pdf
 
@@ -28,8 +24,8 @@ measurement contributes to multiple orientation bins in multiple cells.
 
 
 def get_magnitudes_and_orientations(
-    Ix: np.ndarray,
-    Iy: np.ndarray
+        Ix: np.ndarray,
+        Iy: np.ndarray
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     This function will return the magnitudes and orientations of the
@@ -45,13 +41,11 @@ def get_magnitudes_and_orientations(
             the gradients at each pixel location. angles should range from
             -PI to PI.
     """
-    magnitudes = np.sqrt(Ix**2 + Iy**2)
-    orientations = np.arctan2(Iy, Ix)
-    # return magnitudes, orientations
-
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
+    magnitudes = np.sqrt(Ix ** 2 + Iy ** 2)
+    orientations = np.arctan2(Iy, Ix)
 
     # raise NotImplementedError('`get_magnitudes_and_orientations()` function ' +
     #     'in `part4_sift_descriptor.py` needs to be implemented')
@@ -64,8 +58,8 @@ def get_magnitudes_and_orientations(
 
 
 def get_gradient_histogram_vec_from_patch(
-    window_magnitudes: np.ndarray,
-    window_orientations: np.ndarray
+        window_magnitudes: np.ndarray,
+        window_orientations: np.ndarray
 ) -> np.ndarray:
     """ Given 16x16 patch, form a 128-d vector of gradient histograms.
 
@@ -73,8 +67,8 @@ def get_gradient_histogram_vec_from_patch(
     (1) a 4x4 grid of cells, each feature_width/4. It is simply the terminology
         used in the feature literature to describe the spatial bins where
         gradient distributions will be described. The grid will extend
-        feature_width/2 to the left of the "center", and feature_width/2 - 1 to
-        the right
+        feature_width/2 - 1 to the left of the "center", and feature_width/2 to
+        the right. The same applies to above and below, respectively.
     (2) each cell should have a histogram of the local distribution of
         gradients in 8 orientations. Appending these histograms together will
         give you 4x4 x 8 = 128 dimensions. The bin centers for the histogram
@@ -99,32 +93,27 @@ def get_gradient_histogram_vec_from_patch(
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
+    n = window_magnitudes.shape[0]
+    splitted_mags = []
+    v_splitted_mags = np.vsplit(window_magnitudes, n // 4)
+    for v_splitted_magsi in v_splitted_mags:
+        splitted_mags.append(np.hsplit(v_splitted_magsi, n // 4))
+    splitted_mags = np.array(splitted_mags)
+    flattened_splitted_mags = splitted_mags.reshape((n // 4, n // 4, 16))
 
-    # 初始化特征向量
-    feature_width = 16
-    num_cells_per_row = 4
-    num_cells_per_col = 4
-    num_bins = 8
-    bin_centers = np.array([-7 * np.pi / 8, -5 * np.pi / 8, -3 * np.pi / 8, -np.pi / 8,
-                            np.pi / 8, 3 * np.pi / 8, 5 * np.pi / 8, 7 * np.pi / 8])
-    cell_width = feature_width // num_cells_per_row
-    wgh = np.zeros((num_cells_per_row * num_cells_per_col * num_bins, 1))
-    for row in range(num_cells_per_row):
-        for col in range(num_cells_per_col):
-            # 确定当前单元格对应的图像区域范围
-            row_start = row * cell_width
-            row_end = (row + 1) * cell_width
-            col_start = col * cell_width
-            col_end = (col + 1) * cell_width
-            cell_magnitudes = window_magnitudes[row_start:row_end, col_start:col_end].flatten()
-            cell_orientations = window_orientations[row_start:row_end, col_start:col_end].flatten()
-            # 计算当前单元格的梯度直方图
-            hist, _ = np.histogram(cell_orientations, bins=num_bins, range=(-np.pi, np.pi), weights=cell_magnitudes,
-                                   density=False)
-            # 将当前单元格的直方图结果放入特征向量中
-            idx = (row * num_cells_per_col + col) * num_bins
-            wgh[idx:idx + num_bins, 0] = hist
-    return wgh
+    splitted_oris = []
+    v_splitted_oris = np.vsplit(window_orientations, n // 4)
+    for v_splitted_orisi in v_splitted_oris:
+        splitted_oris.append(np.hsplit(v_splitted_orisi, n // 4))
+    splitted_oris = np.array(splitted_oris)
+    flattened_splitted_oris = splitted_oris.reshape((n // 4, n // 4, 16))
+    wgh = []
+    for i in range(n // 4):
+        for j in range(n // 4):
+            histogram = np.histogram(flattened_splitted_oris[i][j], 8,
+                                     (-np.pi, np.pi), False, flattened_splitted_mags[i][j])
+            wgh.append(histogram[0])
+    wgh = np.array(wgh).reshape(8 * (n // 4) ** 2, 1)
 
     # raise NotImplementedError('`get_gradient_histogram_vec_from_patch` ' +
     #     'function in `part4_sift_descriptor.py` needs to be implemented')
@@ -133,129 +122,87 @@ def get_gradient_histogram_vec_from_patch(
     #                             END OF YOUR CODE                            #
     ###########################################################################
 
-    # return wgh
+    return wgh
 
 
 def get_feat_vec(
-    x: float,
-    y: float,
-    magnitudes,
-    orientations,
-    feature_width: int = 16
+        c: float,
+        r: float,
+        magnitudes,
+        orientations,
+        feature_width: int = 16
 ) -> np.ndarray:
     """
-    This function returns the feature vector for a specific interest point. To
-    start with, you might want to simply use normalized patches as your local
-    feature. This is very simple to code and works OK. However, to get full
-    credit you will need to implement the more effective SIFT descriptor (see
-    Szeliski 7.1.2 or the original publications at
-    http://www.cs.ubc.ca/~lowe/keypoints/). Your implementation does not need
-    to exactly match the SIFT reference.
+    This function returns the feature vector for a specific interest point.
+    To start with, you might want to simply use normalized patches as your
+    local feature. This is very simple to code and works OK. However, to get
+    full credit you will need to implement the more effective SIFT descriptor
+    (See Szeliski 7.1.2 or the original publications at
+    http://www.cs.ubc.ca/~lowe/keypoints/)
+    Your implementation does not need to exactly match the SIFT reference.
 
 
     Your (baseline) descriptor should have:
     (1) Each feature should be normalized to unit length.
-    (2) Each feature should be raised to the 1/2 power, i.e., square-root SIFT
+    (2) Each feature should be raised to the 1/2 power, i.e. square-root SIFT
         (read https://www.robots.ox.ac.uk/~vgg/publications/2012/Arandjelovic12/arandjelovic12.pdf)
 
-    For our tests, you do not need to perform the interpolation in which each
-    gradient measurement contributes to multiple orientation bins in multiple
-    cells. As described in Szeliski, a single gradient measurement creates a
-    weighted contribution to the 4 nearest cells and the 2 nearest orientation
-    bins within each cell, for 8 total contributions. The autograder will only
-    check for each gradient contributing to a single bin.
+    For our tests, you do not need to perform the interpolation in which each gradient
+    measurement contributes to multiple orientation bins in multiple cells
+    As described in Szeliski, a single gradient measurement creates a
+    weighted contribution to the 4 nearest cells and the 2 nearest
+    orientation bins within each cell, for 8 total contributions.
+    The autograder will only check for each gradient contributing to a single bin.
 
     Args:
-        x: a float, the x-coordinate of the interest point
-        y: A float, the y-coordinate of the interest point
+        c: a float, the column (x-coordinate) of the interest point
+        r: A float, the row (y-coordinate) of the interest point
         magnitudes: A numpy array of shape (m,n), representing image gradients
             at each pixel location
         orientations: A numpy array of shape (m,n), representing gradient
             orientations at each pixel location
         feature_width: integer representing the local feature width in pixels.
-            You can assume that feature_width will be a multiple of 4 (i.e.,
-            every cell of your local SIFT-like feature will have an integer
-            width and height). This is the initial window size we examine
-            around each keypoint.
+            You can assume that feature_width will be a multiple of 4 (i.e. every
+                cell of your local SIFT-like feature will have an integer width
+                and height). This is the initial window size we examine around
+                each keypoint.
     Returns:
         fv: A numpy array of shape (feat_dim,1) representing a feature vector.
-            "feat_dim" is the feature_dimensionality (e.g., 128 for standard
-            SIFT). These are the computed features.
+            "feat_dim" is the feature_dimensionality (e.g. 128 for standard SIFT).
+            These are the computed features.
     """
-    """
-    实现返回特定兴趣点特征向量的函数，可参考SIFT描述符相关要求进行更完善实现
-    """
-    half_width = feature_width // 2
-    x_min = int(max(0, x - half_width))
-    x_max = int(min(magnitudes.shape[1], x + half_width))
-    y_min = int(max(0, y - half_width))
-    y_max = int(min(magnitudes.shape[0], y + half_width))
 
-    patch_magnitudes = magnitudes[y_min:y_max, x_min:x_max]
-    patch_orientations = orientations[y_min:y_max, x_min:x_max]
-
-    num_cells_per_row = 4
-    num_cells_per_col = 4
-    num_bins = 8
-    bin_centers = np.array([-7 * np.pi / 8, -5 * np.pi / 8, -3 * np.pi / 8, -np.pi / 8,
-                            np.pi / 8, 3 * np.pi / 8, 5 * np.pi / 8, 7 * np.pi / 8])
-    cell_width = feature_width // num_cells_per_row
-    fv = np.zeros((num_cells_per_row * num_cells_per_col * num_bins, 1))
-
-    # 遍历每个单元格
-    for row in range(num_cells_per_row):
-        for col in range(num_cells_per_col):
-            row_start = row * cell_width
-            row_end = (row + 1) * cell_width
-            col_start = col * cell_width
-            col_end = (col + 1) * cell_width
-            cell_magnitudes = patch_magnitudes[row_start:row_end, col_start:col_end].flatten()
-            cell_orientations = patch_orientations[row_start:row_end, col_start:col_end].flatten()
-
-            # 初始化当前单元格的直方图
-            hist = np.zeros(num_bins)
-            for mag, ang in zip(cell_magnitudes, cell_orientations):
-                # 确定角度所属的bin
-                bin_idx = np.digitize(ang, bin_centers, right=True)
-                if bin_idx == num_bins:
-                    bin_idx = 0
-                hist[bin_idx] += mag
-
-            idx = (row * num_cells_per_col + col) * num_bins
-            fv[idx:idx + num_bins, 0] = hist
-
-    # 归一化特征向量到单位长度
-    norm = np.linalg.norm(fv)
-    if norm > 0:
-        fv /= norm
-
-    # 应用square-root SIFT，即对特征向量每个元素开平方根
+    fv = []  # placeholder
+    #############################################################################
+    # TODO: YOUR CODE HERE                                                      #                                          #
+    #############################################################################
+    r = int(r)
+    c = int(c)
+    window_mags = magnitudes[r - (feature_width // 2 - 1):r + (feature_width // 2 + 1),
+                  c - (feature_width // 2 - 1):c + (feature_width // 2 + 1)]
+    window_oris = orientations[r - (feature_width // 2 - 1):r + (feature_width // 2 + 1),
+                  c - (feature_width // 2 - 1):c + (feature_width // 2 + 1)]
+    fv = get_gradient_histogram_vec_from_patch(window_mags, window_oris)
+    fv = fv / np.linalg.norm(fv)
     fv = np.sqrt(fv)
-    # fv = []  # placeholder
-
-    # ###########################################################################
-    # # TODO: YOUR CODE HERE                                                    #
-    # ###########################################################################
-
     # raise NotImplementedError('`get_feat_vec` function in ' +
     #     '`student_sift.py` needs to be implemented')
 
-    # ###########################################################################
-    # #                             END OF YOUR CODE                            #
-    # ###########################################################################
-
-    # return fv
+    #############################################################################
+    #                             END OF YOUR CODE                              #
+    #############################################################################
+    return fv
 
 
 def get_SIFT_descriptors(
-    image_bw: np.ndarray,
-    X: np.ndarray,
-    Y: np.ndarray,
-    feature_width: int = 16
+        image_bw: np.ndarray,
+        X: np.ndarray,
+        Y: np.ndarray,
+        feature_width: int = 16
 ) -> np.ndarray:
     """
     This function returns the 128-d SIFT features computed at each of the input
-    points. Implement the more effective SIFT descriptor (see Szeliski 4.1.2 or
+    points. Implement the more effective SIFT descriptor (see Szeliski 7.1.2 or
     the original publications at http://www.cs.ubc.ca/~lowe/keypoints/)
 
     Args:
@@ -278,8 +225,16 @@ def get_SIFT_descriptors(
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
 
-    raise NotImplementedError('`get_SIFT_descriptors` function in ' +
-        '`part4_sift_descriptor.py` needs to be implemented')
+    # raise NotImplementedError('`get_SIFT_descriptors` function in ' +
+    #     '`part4_sift_descriptor.py` needs to be implemented')
+    Ix, Iy = compute_image_gradients(image_bw)
+    magnitudes, orientations = get_magnitudes_and_orientations(Ix, Iy)
+    (k,) = X.shape
+    fvs = np.empty((k, 128, 1))
+    for i in range(k):
+        fvs[i] = (get_feat_vec(X[i], Y[i], magnitudes, orientations, feature_width))
+    (k, feat_dim, _) = fvs.shape
+    fvs = fvs.reshape((k, feat_dim))
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -292,9 +247,10 @@ def get_SIFT_descriptors(
 ## Implementation of the function below is  optional (extra credit)
 
 def get_sift_features_vectorized(
-    image_bw: np.ndarray,
-    X: np.ndarray,
-    Y: np.ndarray
+        image_bw: np.ndarray,
+        X: np.ndarray,
+        Y: np.ndarray,
+        Window_size=16
 ) -> np.ndarray:
     """
     This function is a vectorized version of `get_SIFT_descriptors`.
@@ -338,9 +294,14 @@ def get_sift_features_vectorized(
     ###########################################################################
     # TODO: YOUR CODE HERE                                                    #
     ###########################################################################
-
-    raise NotImplementedError('`get_SIFT_features_vectorized` function in ' +
-        '`part4_sift_descriptor.py` needs to be implemented')
+    Ix, Iy = compute_image_gradients(image_bw)
+    magnitudes, orientations = get_magnitudes_and_orientations(Ix, Iy)
+    (k,) = X.shape
+    fvs = np.empty((k, (Window_size // 4) ** 2 * 8, 1))
+    for i in range(k):
+        fvs[i] = (get_feat_vec(X[i], Y[i], magnitudes, orientations, Window_size))
+    (k, feat_dim, _) = fvs.shape
+    fvs = fvs.reshape((k, feat_dim))
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
