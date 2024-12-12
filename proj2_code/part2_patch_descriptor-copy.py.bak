@@ -24,7 +24,9 @@ def compute_normalized_patch_descriptors(
     D = feature_width ** 2
     fvs = np.zeros((K, D))
 
+
     for i in range(K):
+        print('i=', i)
         x_center = int(X[i])
         y_center = int(Y[i])
 
